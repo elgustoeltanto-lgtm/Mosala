@@ -1,20 +1,21 @@
 export interface Location {
   city: string;
+  address: string;
   lat: number;
   lng: number;
-  address?: string;
 }
 
 export interface Job {
   id: string;
   title: string;
-  category: 'Animaux' | 'Nettoyage' | 'Cuisine' | 'Bricolage';
+  type: 'job' | 'business'; // Job ponctuel ou Commerce (Pizza, Garage...)
+  category: 'Animaux' | 'Nettoyage' | 'Cuisine' | 'Bricolage' | 'Livraison' | 'Garage';
   description: string;
   price: number;
+  publisherPhone: string;
+  acceptorPhone?: string;
+  acceptorIdCardUrl?: string; // Fichier ID uploadé
   location: Location;
-  publisherPhone: string;     // Numéro du publiant
-  acceptorPhone?: string;      // Numéro de l'exécuteur qui a accepté
   status: 'open' | 'reserved' | 'paid';
-  reservedAt?: number;         // Timestamp pour l'expiration d'1 heure
-  referrerId?: string;
+  reservedAt?: number;
 }
