@@ -11,3 +11,17 @@ export function renderJobForm(onSubmit: (newJob: any) => void) {
     </form>
   `;
 }
+document.querySelector('#job-form')?.addEventListener('submit', (e) => {
+  e.preventDefault();
+  
+  const newJob = {
+    title: (document.querySelector('#title') as HTMLInputElement).value,
+    category: (document.querySelector('#category') as HTMLInputElement).value,
+    price: (document.querySelector('#price') as HTMLInputElement).value,
+    location: (document.querySelector('#location') as HTMLInputElement).value,
+    description: (document.querySelector('#description') as HTMLInputElement).value,
+  };
+
+  // Appelez votre fonction pour enregistrer en base de données ou rafraîchir l'interface
+  addJobToUI(newJob);
+});
