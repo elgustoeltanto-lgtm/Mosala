@@ -31,6 +31,7 @@ export function renderJobForm(onSubmit: (newJob: Job) => void): string {
         publisherPhone: (document.getElementById('job-phone') as HTMLInputElement).value,
         location: {
           city: (document.getElementById('job-city') as HTMLInputElement).value,
+          address: (document.getElementById('job-city') as HTMLInputElement).value,
           lat: Number((document.getElementById('job-lat') as HTMLInputElement).value) || -11.6608,
           lng: Number((document.getElementById('job-lng') as HTMLInputElement).value) || 27.4794,
         },
