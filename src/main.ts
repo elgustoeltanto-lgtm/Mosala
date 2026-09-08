@@ -195,20 +195,28 @@ function renderAcceptView(): string {
   }
 };
 
-(window as any).triggerSTKPush = (jobId: string) => {
+import { initiateMpesaPayment } from './api/mpesa';
+
+(window as any).triggerSTKPush = async (jobId: string) => {
   const job = mockJobs.find((j: Job) => j.id === jobId);
   if (!job) return;
 
   const breakdown = calculatePayout(job.price, Boolean(job.referrerId));
 
-  alert(`Demande de paiement envoyée !
-  
-Un code PIN Mobile Money a été envoyé sur votre téléphone (${job.publisherPhone}).
-• Montant : ${job.price} $
-• Répartition : Exécuteur (${breakdown.executorPayout.toFixed(2)} $) | Frais (${breakdown.platformFee.toFixed(2)} $)`);
+  alert(`Initialisation du paiement M-Pesa pour ${job.price} $...`);
 
-  job.status = 'paid';
-  renderApp();
+  // Appel de l'API M-Pesa Sandbox
+  const response = await initiateMpesaPayment({
+    amount: job.price,
+    phoneNumber: job.publisherPhone,
+    transactionRef: `MOSALA-${job.id}`
+  });
+
+  if (response.success) {
+    alert(`${response.message}\n\n• Transaction ID: ${response.transactionID}\n• Gain exécuteur: ${breakdown.executorPayout.toFixed(2)} $`);
+    job.status = 'paid';
+    renderApp();
+  } else {
+    alert(`Erreur M-Pesa : ${response.message}`);
+  }
 };
-
-renderApp();
