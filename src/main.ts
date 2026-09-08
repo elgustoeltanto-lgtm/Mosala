@@ -4,7 +4,6 @@ import { renderJobForm } from './JobForm';
 import { calculatePayout } from './utils/payment';
 import { printJobReceipt } from './utils/print';
 
-// States: 'home' for Landing Page, 'publish' for Enregistrer, 'accept' for Rechercher
 let currentMode: 'home' | 'publish' | 'accept' = 'home';
 let userPublisherPhone = '';
 
@@ -17,6 +16,16 @@ let mockJobs: Job[] = [
     price: 20,
     publisherPhone: '+243990000001',
     location: { city: 'Lubumbashi (Golf)', address: 'Lubumbashi (Golf)', lat: -11.6608, lng: 27.4794 },
+    status: 'open'
+  },
+  {
+    id: '2',
+    title: 'Lavage Auto Express & Polish',
+    category: 'Garage',
+    description: 'Lavage complet intérieur/extérieur avec cire de protection',
+    price: 15,
+    publisherPhone: '+243810000002',
+    location: { city: 'Lubumbashi (Bel-Air)', address: 'Av. Kasavubu #45', lat: -11.6800, lng: 27.5000 },
     status: 'open'
   }
 ];
@@ -43,10 +52,6 @@ function renderApp() {
         <span class="logo">👷‍♂️⛏️</span>
         <h1 class="title">Mosala</h1>
       </div>
-      <nav class="nav-toggle">
-        <button id="btn-publish" class="${currentMode === 'publish' ? 'active' : ''}">Enregistrer</button>
-        <button id="btn-accept" class="${currentMode === 'accept' ? 'active' : ''}">Rechercher</button>
-      </nav>
     </header>
 
     <main class="content-container">
@@ -56,20 +61,17 @@ function renderApp() {
     </main>
   `;
 
-  // Event Listeners
   document.getElementById('btn-home')?.addEventListener('click', () => { currentMode = 'home'; renderApp(); });
-  document.getElementById('btn-publish')?.addEventListener('click', () => { currentMode = 'publish'; renderApp(); });
-  document.getElementById('btn-accept')?.addEventListener('click', () => { currentMode = 'accept'; renderApp(); });
 }
 
-// 1. Landing Page View (Clean & Avant-Garde)
+// 1. Page d'accueil épurée
 function renderHomeView(): string {
   return `
     <div class="hero-landing">
       <div class="hero-card">
         <div class="hero-badge">👷‍♂️⛏️ MOSALA</div>
         <h2 class="hero-title">Services & Business en Temps Réel</h2>
-        <p class="hero-subtitle">Publiez ou trouvez des opportunités de travail locales en un clic.</p>
+        <p class="hero-subtitle">Publiez ou trouvez des opportunités de travail et commerces locaux.</p>
         
         <div class="hero-actions">
           <button class="btn-hero btn-hero-primary" onclick="switchMode('publish')">
@@ -87,21 +89,24 @@ function renderHomeView(): string {
   `;
 }
 
-// 2. Publish / Enregistrer View
+// 2. Vue Enregistrer
 function renderPublishView(): string {
   const myJobs = mockJobs.filter(j => userPublisherPhone && j.publisherPhone === userPublisherPhone);
 
   return `
     <div class="publish-layout">
+      <button class="btn-back" onclick="switchMode('home')">← Retour à l'accueil</button>
+      
       ${renderJobForm((newJob) => {
         userPublisherPhone = newJob.publisherPhone;
         mockJobs.unshift(newJob);
-        renderApp();
+        alert("Enregistrement réussi ! Votre offre/business est désormais visible.");
+        switchMode('accept'); // Bascule directement sur la recherche
       })}
 
       <div class="my-jobs-panel">
-        <h3>Mes annonces enregistrées</h3>
-        ${myJobs.length === 0 ? '<p class="empty-msg">Aucune annonce publiée pour ce numéro.</p>' : ''}
+        <h3>Mes enregistrements</h3>
+        ${myJobs.length === 0 ? '<p class="empty-msg">Aucune annonce enregistrée pour ce numéro.</p>' : ''}
         ${myJobs.map(job => `
           <div class="my-job-card">
             <h4>${job.title} - ${job.price} $</h4>
@@ -120,38 +125,41 @@ function renderPublishView(): string {
   `;
 }
 
-// 3. Accept / Rechercher View
+// 3. Vue Rechercher (Affiche tous les Business et Travaux disponibles)
 function renderAcceptView(): string {
   const availableJobs = mockJobs.filter(j => j.status === 'open');
 
   return `
-    <div class="job-cards-grid">
-      ${availableJobs.length === 0 ? '<p>Aucun service disponible pour le moment.</p>' : ''}
-      ${availableJobs.map(job => `
-        <div class="job-card">
-          <div class="card-header">
-            <span class="badge">${job.category}</span>
-            <span class="price">${job.price} $</span>
+    <div class="accept-container">
+      <button class="btn-back" onclick="switchMode('home')">← Retour à l'accueil</button>
+      
+      <div class="job-cards-grid">
+        ${availableJobs.length === 0 ? '<p class="empty-msg">Aucun service ou business disponible pour le moment.</p>' : ''}
+        ${availableJobs.map(job => `
+          <div class="job-card">
+            <div class="card-header">
+              <span class="badge">${job.category}</span>
+              <span class="price">${job.price} $</span>
+            </div>
+            <h3>${job.title}</h3>
+            <p>${job.description}</p>
+            <p class="phone-tag">📞 Contact : ${job.publisherPhone}</p>
+            <p class="location-tag">📍 ${job.location.city}</p>
+            
+            <div class="accept-action">
+              <input type="tel" id="acceptor-phone-${job.id}" placeholder="Votre N° de téléphone" required />
+              <label for="acceptor-id-${job.id}">Copie Pièce d'identité (ID) :</label>
+              <input type="file" id="acceptor-id-${job.id}" accept="image/*" required />
+              <button class="btn-accept-job" onclick="submitAcceptanceWithID('${job.id}')">Réserver / Accepter</button>
+            </div>
           </div>
-          <h3>${job.title}</h3>
-          <p>${job.description}</p>
-          <p class="phone-tag">📞 Publiant : ${job.publisherPhone}</p>
-          <p class="location-tag">📍 ${job.location.city}</p>
-          
-          <div class="accept-action">
-            <input type="tel" id="acceptor-phone-${job.id}" placeholder="Votre N° de téléphone" required />
-            <label for="acceptor-id-${job.id}">Pièce d'identité (ID) :</label>
-            <input type="file" id="acceptor-id-${job.id}" accept="image/*" required />
-            <button class="btn-accept-job" onclick="submitAcceptanceWithID('${job.id}')">Accepter ce travail</button>
-          </div>
-        </div>
-      `).join('')}
+        `).join('')}
+      </div>
     </div>
   `;
 }
 
-// Global actions
-(window as any).switchMode = (mode: 'publish' | 'accept') => {
+(window as any).switchMode = (mode: 'home' | 'publish' | 'accept') => {
   currentMode = mode;
   renderApp();
 };
@@ -176,7 +184,7 @@ function renderAcceptView(): string {
 
       printJobReceipt(job);
 
-      alert("Identité vérifiée et mission réservée ! La fiche a été imprimée et le travail a été masqué en ligne.");
+      alert("Identité vérifiée et réservation effectuée ! Le bon a été imprimé et le service est désormais masqué en ligne.");
       renderApp();
     };
     reader.readAsDataURL(fileInput.files[0]);
