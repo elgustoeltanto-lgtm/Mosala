@@ -48,14 +48,16 @@ export function renderJobForm(onSubmit: (newJob: Job) => void): string {
       <h3>Publier un nouveau travail</h3>
       
       <input type="text" id="job-title" placeholder="Titre (ex: Lavage de voiture)" required />
-      
-      <select id="job-category" required>
-        <option value="Animaux">🐶 Animaux</option>
-        <option value="Nettoyage">🧹 Nettoyage</option>
-        <option value="Cuisine">🍳 Cuisine</option>
-        <option value="Bricolage">🛠️ Bricolage</option>
-      </select>
 
+      <select id="job-category" required>
+        <option value="Garage">🛠️ Garage / Mécanique</option>
+        <option value="Livraison">🍕 Pizza / Restauration / Livraison</option>
+        <option value="Nettoyage">🧼 Lavage Auto / Nettoyage</option>
+        <option value="Bricolage">🔧 Bricolage / Dépannage</option>
+        <option value="Cuisine">🍳 Cuisine à domicile</option>
+        <option value="Animaux">🐶 Soins Animaux</option>
+      </select>    
+      
       <input type="number" id="job-price" placeholder="Prix du travail ($)" min="1" required />
       <input type="tel" id="job-phone" placeholder="Votre numéro de téléphone (+243...)" required />
 
