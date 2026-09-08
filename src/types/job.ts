@@ -2,6 +2,7 @@ export interface Location {
   city: string;
   lat: number;
   lng: number;
+  address?: string;
 }
 
 export interface Job {
@@ -11,15 +12,9 @@ export interface Job {
   description: string;
   price: number;
   location: Location;
-  distance?: number;
-  executorId?: string;
+  publisherPhone: string;     // Numéro du publiant
+  acceptorPhone?: string;      // Numéro de l'exécuteur qui a accepté
+  status: 'open' | 'reserved' | 'paid';
+  reservedAt?: number;         // Timestamp pour l'expiration d'1 heure
   referrerId?: string;
-}
-
-export interface PaymentBreakdown {
-  totalAmount: number;
-  platformFee: number;
-  transferFee: number;
-  referrerBonus: number;
-  executorPayout: number;
 }
