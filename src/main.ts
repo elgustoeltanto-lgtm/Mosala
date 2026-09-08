@@ -3,6 +3,7 @@ import type { Job } from './types/job';
 import { renderJobForm } from './JobForm';
 import { calculatePayout } from './utils/payment';
 import { printJobReceipt } from './utils/print';
+import { initiateMpesaPayment } from './api/mpesa';
 
 let currentMode: 'home' | 'publish' | 'accept' = 'home';
 let userPublisherPhone = '';
@@ -30,13 +31,11 @@ let mockJobs: Job[] = [
   }
 ];
 
-// Déclaration explicite de switchMode accessible partout dans le fichier
 function switchMode(mode: 'home' | 'publish' | 'accept') {
   currentMode = mode;
   renderApp();
 }
 
-// Exposition sur window pour les boutons HTML inline (onclick="switchMode(...)")
 (window as any).switchMode = switchMode;
 
 function checkExpirations() {
@@ -73,7 +72,7 @@ function renderApp() {
   document.getElementById('btn-home')?.addEventListener('click', () => switchMode('home'));
 }
 
-// 1. Page d'accueil épurée
+// 1. Vue Accueil
 function renderHomeView(): string {
   return `
     <div class="hero-landing">
@@ -124,7 +123,7 @@ function renderPublishView(): string {
             ${job.status === 'reserved' ? `
               <div class="acceptor-info-box">
                 <p>📞 Exécuteur : <strong>${job.acceptorPhone}</strong></p>
-                <button class="btn-pay-now" onclick="triggerSTKPush('${job.id}')">Payer Maintenant</button>
+                <button class="btn-pay-now" onclick="triggerSTKPush('${job.id}')">Payer via M-Pesa</button>
               </div>
             ` : ''}
           </div>
@@ -168,6 +167,7 @@ function renderAcceptView(): string {
   `;
 }
 
+// Actions globales window
 (window as any).submitAcceptanceWithID = (jobId: string) => {
   const phoneInput = document.getElementById(`acceptor-phone-${jobId}`) as HTMLInputElement;
   const fileInput = document.getElementById(`acceptor-id-${jobId}`) as HTMLInputElement;
@@ -195,9 +195,7 @@ function renderAcceptView(): string {
   }
 };
 
-import { initiateMpesaPayment } from './api/mpesa';
-
-(window as any).triggerSTKPush = async (jobId: string) => {
+(window as any).triggerSTKPush = (jobId: string) => {
   const job = mockJobs.find((j: Job) => j.id === jobId);
   if (!job) return;
 
@@ -205,18 +203,24 @@ import { initiateMpesaPayment } from './api/mpesa';
 
   alert(`Initialisation du paiement M-Pesa pour ${job.price} $...`);
 
-  // Appel de l'API M-Pesa Sandbox
-  const response = await initiateMpesaPayment({
+  // Exécution asynchrone M-Pesa
+  initiateMpesaPayment({
     amount: job.price,
     phoneNumber: job.publisherPhone,
     transactionRef: `MOSALA-${job.id}`
+  }).then((response) => {
+    if (response.success) {
+      alert(`${response.message}\n\n• Ref: ${response.transactionID}\n• Répartition exécuteur: ${breakdown.executorPayout.toFixed(2)} $`);
+      job.status = 'paid';
+      renderApp();
+    } else {
+      alert(`Erreur M-Pesa : ${response.message}`);
+    }
+  }).catch((err) => {
+    console.error(err);
+    alert("Erreur lors de la communication avec l'API M-Pesa.");
   });
-
-  if (response.success) {
-    alert(`${response.message}\n\n• Transaction ID: ${response.transactionID}\n• Gain exécuteur: ${breakdown.executorPayout.toFixed(2)} $`);
-    job.status = 'paid';
-    renderApp();
-  } else {
-    alert(`Erreur M-Pesa : ${response.message}`);
-  }
 };
+
+// Initialisation de l'application
+renderApp();
