@@ -15,7 +15,7 @@ export function renderJobCard(job: Job): string {
       <p>${job.description}</p>
       <div class="card-footer">
         <small class="location-tag">${distanceText}</small>
-        <button class="btn-pay" onclick="window.openPaymentModal('${job.id}')">Payer / Réserver</button>
+        <button class="btn-pay" data-job-id="${job.id}">Payer / Réserver</button>
       </div>
     </div>
   `;
