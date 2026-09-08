@@ -2,6 +2,7 @@ import './style.css';
 import type { Job } from './types/job';
 import { renderJobCard } from './components/JobCard';
 import { renderPaymentModal } from './components/PaymentModal';
+import { renderJobForm } from './JobForm';
 import { getUserCoordinates, calculateDistance } from './utils/geo';
 
 let mockJobs: Job[] = [
@@ -29,26 +30,37 @@ const app = document.querySelector<HTMLDivElement>('#app')!;
 function renderApp() {
   app.innerHTML = `
     <header class="navbar">
-      <h1>Service Market</h1>
+      <h1>Mosala</h1>
       <button id="btn-geo" class="btn-geo">🎯 Trier par proximité</button>
     </header>
-    <main class="job-grid">
-      ${mockJobs.map(renderJobCard).join('')}
-    </main>
+
+    <div class="main-layout">
+      <!-- Section Formulaire -->
+      <aside class="form-container">
+        ${renderJobForm((newJob: Job) => {
+          mockJobs.unshift(newJob);
+          renderApp();
+        })}
+      </aside>
+
+      <!-- Section Grille des Jobs -->
+      <section class="job-grid">
+        ${mockJobs.map(renderJobCard).join('')}
+      </section>
+    </div>
+
     <div id="modal-container"></div>
   `;
 
+  // Événement Géolocalisation
   document.getElementById('btn-geo')?.addEventListener('click', async () => {
     try {
       const userCoords = await getUserCoordinates();
-      
       mockJobs = mockJobs.map(job => ({
         ...job,
         distance: calculateDistance(userCoords.lat, userCoords.lng, job.location.lat, job.location.lng)
       }));
-
       mockJobs.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-
       renderApp();
     } catch (err) {
       alert("Impossible de récupérer votre position : " + (err as Error).message);
@@ -58,10 +70,10 @@ function renderApp() {
 
 renderApp();
 
+// Gestion de la modale de paiement
 (window as any).openPaymentModal = (jobId: string) => {
   const job = mockJobs.find(j => j.id === jobId);
   if (!job) return;
-  
   const container = document.getElementById('modal-container')!;
   container.innerHTML = renderPaymentModal(job.price, Boolean(job.referrerId));
 };
