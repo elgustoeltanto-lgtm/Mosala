@@ -1,7 +1,9 @@
-import { Job } from '../types/job';
+import type { Job } from '../types/job';
 
 export function renderJobCard(job: Job): string {
-  const distanceText = job.distance !== undefined ? `📍 ${job.location.city} (${job.distance} km)` : `📍 ${job.location.city}`;
+  const distanceText = job.distance !== undefined 
+    ? `📍 ${job.location.city} (${job.distance} km)` 
+    : `📍 ${job.location.city}`;
 
   return `
     <div class="job-card" data-id="${job.id}">
