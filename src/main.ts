@@ -30,6 +30,15 @@ let mockJobs: Job[] = [
   }
 ];
 
+// Déclaration explicite de switchMode accessible partout dans le fichier
+function switchMode(mode: 'home' | 'publish' | 'accept') {
+  currentMode = mode;
+  renderApp();
+}
+
+// Exposition sur window pour les boutons HTML inline (onclick="switchMode(...)")
+(window as any).switchMode = switchMode;
+
 function checkExpirations() {
   const now = Date.now();
   mockJobs.forEach(job => {
@@ -61,7 +70,7 @@ function renderApp() {
     </main>
   `;
 
-  document.getElementById('btn-home')?.addEventListener('click', () => { currentMode = 'home'; renderApp(); });
+  document.getElementById('btn-home')?.addEventListener('click', () => switchMode('home'));
 }
 
 // 1. Page d'accueil épurée
@@ -101,7 +110,7 @@ function renderPublishView(): string {
         userPublisherPhone = newJob.publisherPhone;
         mockJobs.unshift(newJob);
         alert("Enregistrement réussi ! Votre offre/business est désormais visible.");
-        switchMode('accept'); // Bascule directement sur la recherche
+        switchMode('accept');
       })}
 
       <div class="my-jobs-panel">
@@ -125,7 +134,7 @@ function renderPublishView(): string {
   `;
 }
 
-// 3. Vue Rechercher (Affiche tous les Business et Travaux disponibles)
+// 3. Vue Rechercher
 function renderAcceptView(): string {
   const availableJobs = mockJobs.filter(j => j.status === 'open');
 
@@ -158,11 +167,6 @@ function renderAcceptView(): string {
     </div>
   `;
 }
-
-(window as any).switchMode = (mode: 'home' | 'publish' | 'accept') => {
-  currentMode = mode;
-  renderApp();
-};
 
 (window as any).submitAcceptanceWithID = (jobId: string) => {
   const phoneInput = document.getElementById(`acceptor-phone-${jobId}`) as HTMLInputElement;
