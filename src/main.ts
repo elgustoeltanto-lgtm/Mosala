@@ -1,5 +1,5 @@
 import './style.css';
-import { Job } from './types/job';
+import type { Job } from './types/job';
 import { renderJobCard } from './components/JobCard';
 import { renderPaymentModal } from './components/PaymentModal';
 import { getUserCoordinates, calculateDistance } from './utils/geo';
