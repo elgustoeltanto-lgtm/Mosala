@@ -4,7 +4,8 @@ import { renderJobForm } from './JobForm';
 import { calculatePayout } from './utils/payment';
 import { printJobReceipt } from './utils/print';
 
-let currentMode: 'publish' | 'accept' = 'accept';
+// States: 'home' for Landing Page, 'publish' for Enregistrer, 'accept' for Rechercher
+let currentMode: 'home' | 'publish' | 'accept' = 'home';
 let userPublisherPhone = '';
 
 let mockJobs: Job[] = [
@@ -38,25 +39,55 @@ function renderApp() {
 
   app.innerHTML = `
     <header class="navbar-avantgarde">
-      <div class="brand">
+      <div class="brand" id="btn-home" style="cursor: pointer;">
         <span class="logo">👷‍♂️⛏️</span>
         <h1 class="title">Mosala</h1>
       </div>
       <nav class="nav-toggle">
-        <button id="btn-publish" class="${currentMode === 'publish' ? 'active' : ''}">Publier un travail</button>
-        <button id="btn-accept" class="${currentMode === 'accept' ? 'active' : ''}">Accepter un travail</button>
+        <button id="btn-publish" class="${currentMode === 'publish' ? 'active' : ''}">Enregistrer</button>
+        <button id="btn-accept" class="${currentMode === 'accept' ? 'active' : ''}">Rechercher</button>
       </nav>
     </header>
 
     <main class="content-container">
-      ${currentMode === 'publish' ? renderPublishView() : renderAcceptView()}
+      ${currentMode === 'home' ? renderHomeView() : ''}
+      ${currentMode === 'publish' ? renderPublishView() : ''}
+      ${currentMode === 'accept' ? renderAcceptView() : ''}
     </main>
   `;
 
+  // Event Listeners
+  document.getElementById('btn-home')?.addEventListener('click', () => { currentMode = 'home'; renderApp(); });
   document.getElementById('btn-publish')?.addEventListener('click', () => { currentMode = 'publish'; renderApp(); });
   document.getElementById('btn-accept')?.addEventListener('click', () => { currentMode = 'accept'; renderApp(); });
 }
 
+// 1. Landing Page View (Clean & Avant-Garde)
+function renderHomeView(): string {
+  return `
+    <div class="hero-landing">
+      <div class="hero-card">
+        <div class="hero-badge">👷‍♂️⛏️ MOSALA</div>
+        <h2 class="hero-title">Services & Business en Temps Réel</h2>
+        <p class="hero-subtitle">Publiez ou trouvez des opportunités de travail locales en un clic.</p>
+        
+        <div class="hero-actions">
+          <button class="btn-hero btn-hero-primary" onclick="switchMode('publish')">
+            <span class="icon">➕</span>
+            <span class="text">Enregistrer Un Business / Travail</span>
+          </button>
+
+          <button class="btn-hero btn-hero-secondary" onclick="switchMode('accept')">
+            <span class="icon">🔍</span>
+            <span class="text">Rechercher Un Business / Travail</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// 2. Publish / Enregistrer View
 function renderPublishView(): string {
   const myJobs = mockJobs.filter(j => userPublisherPhone && j.publisherPhone === userPublisherPhone);
 
@@ -69,7 +100,7 @@ function renderPublishView(): string {
       })}
 
       <div class="my-jobs-panel">
-        <h3>Mes annonces publiées</h3>
+        <h3>Mes annonces enregistrées</h3>
         ${myJobs.length === 0 ? '<p class="empty-msg">Aucune annonce publiée pour ce numéro.</p>' : ''}
         ${myJobs.map(job => `
           <div class="my-job-card">
@@ -89,12 +120,13 @@ function renderPublishView(): string {
   `;
 }
 
+// 3. Accept / Rechercher View
 function renderAcceptView(): string {
   const availableJobs = mockJobs.filter(j => j.status === 'open');
 
   return `
     <div class="job-cards-grid">
-      ${availableJobs.length === 0 ? '<p>Aucun travail disponible pour le moment.</p>' : ''}
+      ${availableJobs.length === 0 ? '<p>Aucun service disponible pour le moment.</p>' : ''}
       ${availableJobs.map(job => `
         <div class="job-card">
           <div class="card-header">
@@ -108,7 +140,7 @@ function renderAcceptView(): string {
           
           <div class="accept-action">
             <input type="tel" id="acceptor-phone-${job.id}" placeholder="Votre N° de téléphone" required />
-            <label for="acceptor-id-${job.id}">Copie Pièce d'identité (ID) :</label>
+            <label for="acceptor-id-${job.id}">Pièce d'identité (ID) :</label>
             <input type="file" id="acceptor-id-${job.id}" accept="image/*" required />
             <button class="btn-accept-job" onclick="submitAcceptanceWithID('${job.id}')">Accepter ce travail</button>
           </div>
@@ -118,7 +150,12 @@ function renderAcceptView(): string {
   `;
 }
 
-// Fonction d'acceptation globale avec Upload ID et impression
+// Global actions
+(window as any).switchMode = (mode: 'publish' | 'accept') => {
+  currentMode = mode;
+  renderApp();
+};
+
 (window as any).submitAcceptanceWithID = (jobId: string) => {
   const phoneInput = document.getElementById(`acceptor-phone-${jobId}`) as HTMLInputElement;
   const fileInput = document.getElementById(`acceptor-id-${jobId}`) as HTMLInputElement;
@@ -139,7 +176,7 @@ function renderAcceptView(): string {
 
       printJobReceipt(job);
 
-      alert("Identité vérifiée et mission réservée ! La fiche a été envoyée à l'impression et le job est masqué en ligne.");
+      alert("Identité vérifiée et mission réservée ! La fiche a été imprimée et le travail a été masqué en ligne.");
       renderApp();
     };
     reader.readAsDataURL(fileInput.files[0]);
