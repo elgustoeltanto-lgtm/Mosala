@@ -79,3 +79,17 @@
 .btn-hero-secondary:hover {
   background: #f1f5f9;
 }
+
+.btn-back {
+  background: transparent;
+  border: none;
+  color: #2563eb;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.btn-back:hover {
+  text-decoration: underline;
+}
