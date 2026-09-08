@@ -1,10 +1,17 @@
+export interface Location {
+  city: string;
+  lat: number;
+  lng: number;
+}
+
 export interface Job {
   id: string;
   title: string;
   category: 'Animaux' | 'Nettoyage' | 'Cuisine' | 'Bricolage';
   description: string;
   price: number;
-  location: string;
+  location: Location;
+  distance?: number;
   executorId?: string;
   referrerId?: string;
 }
