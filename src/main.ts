@@ -1,11 +1,10 @@
 import './style.css';
 import type { Job } from './types/job';
-import { renderJobCard } from './components/JobCard';
-import { renderPaymentModal } from './components/PaymentModal';
 import { renderJobForm } from './JobForm';
-import { getUserCoordinates, calculateDistance } from './utils/geo';
+import { calculatePayout } from './utils/payment';
 
 let currentMode: 'publish' | 'accept' = 'accept';
+let userPublisherPhone = ''; // Stocke le numéro de l'utilisateur s'il publie
 
 let mockJobs: Job[] = [
   {
@@ -14,99 +13,146 @@ let mockJobs: Job[] = [
     category: 'Animaux',
     description: 'Balade de 1h au parc',
     price: 20,
+    publisherPhone: '+243990000001',
     location: { city: 'Lubumbashi (Golf)', lat: -11.6608, lng: 27.4794 },
-    referrerId: 'user_123'
-  },
-  {
-    id: '2',
-    title: 'Nettoyage complet villa',
-    category: 'Nettoyage',
-    description: 'Salon, cuisine et terrasse',
-    price: 100,
-    location: { city: 'Lubumbashi (Bel-Air)', lat: -11.6800, lng: 27.5000 }
+    status: 'open'
   }
 ];
 
-const app = document.querySelector<HTMLDivElement>('#app')!;
-
-function renderApp() {
-  app.innerHTML = `
-    <header class="navbar">
-      <div class="logo">
-        <span class="logo-icon">👷‍♂️⛏️</span>
-        <h1>Mosala</h1>
-      </div>
-      <div class="nav-actions">
-        <button id="btn-mode-publish" class="btn-nav ${currentMode === 'publish' ? 'active' : ''}">Publier un travail</button>
-        <button id="btn-mode-accept" class="btn-nav ${currentMode === 'accept' ? 'active' : ''}">Accepter un travail</button>
-        <button id="btn-geo" class="btn-geo">🎯 Trier par proximité</button>
-      </div>
-    </header>
-
-    <main class="main-layout">
-      ${currentMode === 'publish' 
-        ? `<section class="form-section">
-             ${renderJobForm((newJob: Job) => {
-               mockJobs.unshift(newJob);
-               currentMode = 'accept';
-               renderApp();
-             })}
-           </section>`
-        : `<section class="job-grid">
-             ${mockJobs.map(renderJobCard).join('')}
-           </section>`
-      }
-    </main>
-
-    <div id="modal-container"></div>
-  `;
-
-  // Événements de changement de mode
-  document.getElementById('btn-mode-publish')?.addEventListener('click', () => {
-    currentMode = 'publish';
-    renderApp();
-  });
-
-  document.getElementById('btn-mode-accept')?.addEventListener('click', () => {
-    currentMode = 'accept';
-    renderApp();
-  });
-
-  // Événement de géolocalisation
-  document.getElementById('btn-geo')?.addEventListener('click', async () => {
-    try {
-      const userCoords = await getUserCoordinates();
-      mockJobs = mockJobs.map(job => ({
-        ...job,
-        distance: calculateDistance(userCoords.lat, userCoords.lng, job.location.lat, job.location.lng)
-      }));
-      mockJobs.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-      currentMode = 'accept';
-      renderApp();
-    } catch (err) {
-      alert("Impossible de récupérer votre position : " + (err as Error).message);
+// Vérification de la règle de réinstallation (1 heure = 3600000 ms)
+function checkExpirations() {
+  const now = Date.now();
+  mockJobs.forEach(job => {
+    if (job.status === 'reserved' && job.reservedAt && (now - job.reservedAt > 3600000)) {
+      job.status = 'open';
+      delete job.acceptorPhone;
+      delete job.reservedAt;
     }
   });
 }
 
-// Écouteur global pour ouvrir la modale de paiement depuis n'importe quelle carte
-document.addEventListener('click', (e) => {
-  const target = e.target as HTMLElement;
-  if (target && target.classList.contains('btn-pay')) {
-    const jobId = target.getAttribute('data-job-id');
-    if (jobId) {
-      const job = mockJobs.find(j => j.id === jobId);
-      if (job) {
-        const container = document.getElementById('modal-container')!;
-        container.innerHTML = renderPaymentModal(job.price, Boolean(job.referrerId));
-      }
-    }
-  }
-});
+const app = document.querySelector<HTMLDivElement>('#app')!;
 
-(window as any).closePaymentModal = () => {
-  const container = document.getElementById('modal-container');
-  if (container) container.innerHTML = '';
+function renderApp() {
+  checkExpirations();
+
+  app.innerHTML = `
+    <header class="navbar-avantgarde">
+      <div class="brand">
+        <span class="logo">👷‍♂️⛏️</span>
+        <h1 class="title">Mosala</h1>
+      </div>
+      <nav class="nav-toggle">
+        <button id="btn-publish" class="${currentMode === 'publish' ? 'active' : ''}">Publier un travail</button>
+        <button id="btn-accept" class="${currentMode === 'accept' ? 'active' : ''}">Accepter un travail</button>
+      </nav>
+    </header>
+
+    <main class="content-container">
+      ${currentMode === 'publish' ? renderPublishView() : renderAcceptView()}
+    </main>
+  `;
+
+  // Événements de navigation
+  document.getElementById('btn-publish')?.addEventListener('click', () => { currentMode = 'publish'; renderApp(); });
+  document.getElementById('btn-accept')?.addEventListener('click', () => { currentMode = 'accept'; renderApp(); });
+}
+
+// Vue "Publier un travail" (Formulaire + Suivi de mes publications)
+function renderPublishView(): string {
+  const myJobs = mockJobs.filter(j => userPublisherPhone && j.publisherPhone === userPublisherPhone);
+
+  return `
+    <div class="publish-layout">
+      ${renderJobForm((newJob) => {
+        userPublisherPhone = newJob.publisherPhone;
+        mockJobs.unshift(newJob);
+        renderApp();
+      })}
+
+      <div class="my-jobs-panel">
+        <h3>Mes annonces publiées</h3>
+        ${myJobs.length === 0 ? '<p class="empty-msg">Aucune annonce publiée pour ce numéro.</p>' : ''}
+        ${myJobs.map(job => `
+          <div class="my-job-card">
+            <h4>${job.title} - ${job.price} $</h4>
+            <p>Statut : <strong>${job.status === 'open' ? 'En attente d\'un exécutant' : job.status === 'reserved' ? 'Réservé' : 'Payé'}</strong></p>
+            
+            ${job.status === 'reserved' ? `
+              <div class="acceptor-info-box">
+                <p>📞 Exécuteur : <strong>${job.acceptorPhone}</strong></p>
+                <button class="btn-pay-now" onclick="triggerSTKPush('${job.id}')">Payer Maintenant</button>
+              </div>
+            ` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// Vue "Accepter un travail" (Liste des jobs ouverts)
+function renderAcceptView(): string {
+  const availableJobs = mockJobs.filter(j => j.status === 'open');
+
+  return `
+    <div class="job-cards-grid">
+      ${availableJobs.length === 0 ? '<p>Aucun travail disponible pour le moment.</p>' : ''}
+      ${availableJobs.map(job => `
+        <div class="job-card">
+          <div class="card-header">
+            <span class="badge">${job.category}</span>
+            <span class="price">${job.price} $</span>
+          </div>
+          <h3>${job.title}</h3>
+          <p>${job.description}</p>
+          <p class="phone-tag">📞 Publiant : ${job.publisherPhone}</p>
+          <p class="location-tag">📍 ${job.location.city}</p>
+          
+          <div class="accept-action">
+            <input type="tel" id="acceptor-phone-${job.id}" placeholder="Votre N° de téléphone" />
+            <button class="btn-accept-job" onclick="acceptJob('${job.id}')">Accepter ce travail</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// Actions globales
+(window as any).acceptJob = (jobId: string) => {
+  const input = document.getElementById(`acceptor-phone-${jobId}`) as HTMLInputElement;
+  if (!input || !input.value) {
+    alert("Veuillez entrer votre numéro de téléphone pour réserver le travail.");
+    return;
+  }
+
+  const job = mockJobs.find(j => j.id === jobId);
+  if (job) {
+    job.status = 'reserved';
+    job.acceptorPhone = input.value;
+    job.reservedAt = Date.now();
+    alert("Travail réservé ! Le publiant a reçu vos coordonnées pour déclencher le paiement.");
+    renderApp();
+  }
+};
+
+(window as any).triggerSTKPush = (jobId: string) => {
+  const job = mockJobs.find(j => j.id === jobId);
+  if (!job) return;
+
+  const breakdown = calculatePayout(job.price, Boolean(job.referrerId));
+
+  alert(` Demande de paiement envoyée !
+  
+Un code PIN Mobile Money a été envoyé sur votre téléphone (${job.publisherPhone}).
+• Montant : ${job.price} $
+• Répartition : Exécuteur (${breakdown.executorPayout.toFixed(2)} $) | Frais (${breakdown.platformFee.toFixed(2)} $)
+
+Veuillez valider le code PIN sur votre téléphone pour finaliser le contrat.`);
+
+  job.status = 'paid';
+  renderApp();
 };
 
 renderApp();
