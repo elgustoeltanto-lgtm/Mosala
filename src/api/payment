@@ -1,28 +1,27 @@
-# main.py ou api/payment.py
 import os
-import requests
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import requests
 
 app = FastAPI()
 
-# Dictionnaire d'association Opérateur -> Numéro bénéficiaire de l'application
+# Les 4 numéros de l'application associés silencieusement par réseau
 APP_MERCHANT_NUMBERS = {
-    "airtel": "243971802077",  # Airtel Money
-    "orange": "243844569840",  # Orange Money
-    "mpesa": "243821001743",  # Vodacom M-Pesa
-    "africell": "243901617621",  # Africell Money
+    "airtel": "243971802077",
+    "orange": "243844569840",
+    "mpesa": "243821001743",
+    "africell": "243901617621",
 }
 
 
-class PaymentRequest(BaseModel):
-    client_phone: str  # Numéro du client qui paye
-    operator: str  # "mpesa", "orange", "airtel", "africell"
+class MobilePaymentRequest(BaseModel):
+    client_phone: str
+    operator: str
     amount: float
 
 
 @app.post("/api/pay/mobile")
-def initiate_payment(payment: PaymentRequest):
+def process_mobile_payment(payment: MobilePaymentRequest):
     operator_key = payment.operator.lower()
 
     if operator_key not in APP_MERCHANT_NUMBERS:
@@ -30,15 +29,14 @@ def initiate_payment(payment: PaymentRequest):
             status_code=400, detail="Opérateur non pris en charge."
         )
 
-    # Numéro qui recevra les fonds de l'application
     destination_number = APP_MERCHANT_NUMBERS[operator_key]
 
-    # --- Exemple avec l'API FlexPay / Agrégateur ---
+    # Envoi de la demande de Push au téléphone de l'utilisateur
     payload = {
         "merchant": os.getenv("FLEXPAY_MERCHANT_CODE"),
-        "type": "1",
-        "phone": payment.client_phone,  # Téléphone du client à débiter
-        "destination": destination_number,  # Votre numéro récepteur
+        "type": "1",  # Mobile Money
+        "phone": payment.client_phone,  # Téléphone du client
+        "destination": destination_number,  # Numéro récepteur de l'app
         "amount": payment.amount,
         "currency": "USD",
         "reference": f"MOSALA-{payment.client_phone[-4:]}",
@@ -50,7 +48,6 @@ def initiate_payment(payment: PaymentRequest):
         "Content-Type": "application/json",
     }
 
-    # Envoi de la demande USSD Push vers le téléphone du client
     response = requests.post(
         "https://backend.flexpay.cd/api/rest/v1/paymentService",
         json=payload,
@@ -59,10 +56,10 @@ def initiate_payment(payment: PaymentRequest):
 
     if response.status_code == 200:
         return {
-            "status": "pending",
-            "message": f"Demande envoyée au {payment.client_phone}. Saisissez votre code PIN pour transférer les frais vers le compte de l'application ({destination_number}).",
+            "status": "success",
+            "message": "Invite PIN envoyée sur le téléphone.",
         }
     else:
         raise HTTPException(
-            status_code=400, detail="Échec de l'initialisation du paiement."
+            status_code=400, detail="Échec lors du déclenchement du paiement."
         )
