@@ -33,6 +33,47 @@ async function getMpesaToken() {
     throw new Error('Impossible d\'obtenir le jeton M-Pesa.');
   }
 }
+app.post('/api/payments/flexpay', async (req, res) => {
+  const { phone_number, amount, currency } = req.body;
+
+  const FLEXPAY_TOKEN = process.env.FLEXPAY_TOKEN || 'votre_token_api';
+  const MERCHANT_CODE = process.env.MERCHANT_CODE || 'votre_code_marchand';
+
+  const payload = {
+    merchant: MERCHANT_CODE,
+    type: '1', // 1 = Mobile Money
+    phone: phone_number,
+    reference: `REF-${phone_number ? phone_number.slice(0, 5) : Date.now()}`,
+    amount: amount,
+    currency: currency || 'USD',
+    callbackUrl: 'https://votre-domaine.com/api/payment/callback'
+  };
+
+  try {
+    const response = await axios.post(
+      'https://backend.flexpay.cd/api/rest/v1/paymentService',
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${FLEXPAY_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (response.status === 200) {
+      return res.json({
+        status: 'pending',
+        message: 'Veuillez vérifier votre téléphone et saisir votre code PIN.'
+      });
+    } else {
+      return res.status(400).json({ message: "Échec de l'initialisation du paiement." });
+    }
+  } catch (error) {
+    console.error('Erreur FlexPay:', error.response?.data || error.message);
+    return res.status(500).json({ message: 'Erreur lors du paiement FlexPay.' });
+  }
+});
 
 app.post('/api/payments/stk-push', async (req, res) => {
   const { phoneNumber, amount, reference } = req.body;
