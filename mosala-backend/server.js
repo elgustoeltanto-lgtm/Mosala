@@ -84,7 +84,9 @@ app.post('/api/payments/stk-push', async (req, res) => {
     });
   }
 });
-
+app.get('/', (req, res) => {
+  res.send('Serveur API Mosala actif et opérationnel !');
+});
 app.listen(PORT, () => {
   console.log(`Serveur Backend Mosala actif sur http://localhost:${PORT}`);
 });
